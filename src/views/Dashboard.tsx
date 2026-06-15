@@ -238,7 +238,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
 
   // Actions: Stop Flexible Fast
-  const handleStopFlexible = (completeManual: boolean) => {
+  const handleStopFlexible = () => {
     if (!activeSession) return;
     
     const end = new Date();
@@ -249,7 +249,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const session: FastSession = {
       ...activeSession,
       endTime: end.toISOString(),
-      completed: completeManual || durationHours >= targetHours,
+      completed: durationHours >= targetHours,
     };
     
     storage.addHistorySession(session);
@@ -337,20 +337,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="timer-actions">
           {settings.fastingType === 'flexible' ? (
             activeSession ? (
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button 
-                  className="btn btn-secondary" 
-                  onClick={() => handleStopFlexible(false)}
-                >
-                  Terminar Temprano
-                </button>
-                <button 
-                  className="btn btn-primary" 
-                  onClick={() => handleStopFlexible(true)}
-                >
-                  Completar Ayuno
-                </button>
-              </div>
+              <button 
+                className="btn btn-danger" 
+                onClick={handleStopFlexible}
+              >
+                Detener Ayuno
+              </button>
             ) : (
               <button className="btn btn-primary" onClick={handleStartFlexible}>
                 Iniciar Ayuno Flexible
