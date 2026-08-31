@@ -33,6 +33,32 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+
+        <!-- AppWidget Variant 1: Minimalist Quick Action -->
+        <receiver
+            android:name=".WidgetMinimalProvider"
+            android:exported="true"
+            android:label="Ayuno Rápido (Minimal)">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_minimal_info" />
+        </receiver>
+
+        <!-- AppWidget Variant 2: Stage & Status -->
+        <receiver
+            android:name=".WidgetStageProvider"
+            android:exported="true"
+            android:label="Etapa Corporal y Tiempo">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_stage_info" />
+        </receiver>
     </application>
 
     <!-- Permissions -->

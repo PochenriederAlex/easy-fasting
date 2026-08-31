@@ -417,93 +417,93 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <CircularProgress
           progress={progress}
-          timeLeft={timeLeftText}
-          statusLabel={statusLabel}
-          percentageText={percentageText}
-          isFasting={isFasting}
-          hasExceededIdeal={hasExceededIdeal}
-        />
+            timeLeft={timeLeftText}
+            statusLabel={statusLabel}
+            percentageText={percentageText}
+            isFasting={isFasting}
+            hasExceededIdeal={hasExceededIdeal}
+          />
 
-        {/* Start / Stop Buttons */}
-        <div className="timer-actions">
-          {settings.fastingType === 'flexible' ? (
-            activeSession ? (
-              <button 
-                className="btn btn-danger" 
-                onClick={handleStopFlexible}
-              >
-                Detener Ayuno
-              </button>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <button className="btn btn-primary" onClick={handleStartFlexible}>
-                  Iniciar Ayuno Flexible
+          {/* Start / Stop Buttons */}
+          <div className="timer-actions">
+            {settings.fastingType === 'flexible' ? (
+              activeSession ? (
+                <button 
+                  className="btn btn-danger" 
+                  onClick={handleStopFlexible}
+                >
+                  Detener Ayuno
                 </button>
-                {eatingStartTime && (
-                  <button 
-                    className="btn btn-secondary" 
-                    style={{ fontSize: '12px', padding: '8px 12px' }}
-                    onClick={handleResetEatingStart}
-                  >
-                    🔄 Reiniciar Reloj de Comida
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <button className="btn btn-primary" onClick={handleStartFlexible}>
+                    Iniciar Ayuno Flexible
                   </button>
-                )}
+                  {eatingStartTime && (
+                    <button 
+                      className="btn btn-secondary" 
+                      style={{ fontSize: '12px', padding: '8px 12px' }}
+                      onClick={handleResetEatingStart}
+                    >
+                      🔄 Reiniciar Reloj de Comida
+                    </button>
+                  )}
+                </div>
+              )
+            ) : (
+              // Strict mode doesn't start/stop, it runs on schedule
+              <div className="detail-card" style={{ textAlign: 'center', width: '100%' }}>
+                <span className="detail-label">Horario Programado Diario</span>
+                <span className="detail-value" style={{ fontSize: '18px', background: 'var(--primary-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                  {settings.strictStartTime} ({settings.strictDuration}h ayuno / {24 - settings.strictDuration}h comida)
+                </span>
               </div>
-            )
-          ) : (
-            // Strict mode doesn't start/stop, it runs on schedule
-            <div className="detail-card" style={{ textAlign: 'center', width: '100%' }}>
-              <span className="detail-label">Horario Programado Diario</span>
-              <span className="detail-value" style={{ fontSize: '18px', background: 'var(--primary-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                {settings.strictStartTime} ({settings.strictDuration}h ayuno / {24 - settings.strictDuration}h comida)
-              </span>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        {/* Time Grid Info */}
-        <div className="fast-details-grid">
-          {isFasting ? (
-            <>
-              <div className="detail-card">
-                <span className="detail-label">Inicio Ayuno</span>
-                <span className="detail-value">
-                  {settings.fastingType === 'flexible' && activeSession
-                    ? new Date(activeSession.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                    : settings.fastingType === 'strict' && strictState
-                    ? strictState.windowStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                    : '--:--'}
-                </span>
-              </div>
-              <div className="detail-card">
-                <span className="detail-label">Finalización</span>
-                <span className="detail-value">
-                  {settings.fastingType === 'flexible' && activeSession
-                    ? new Date(new Date(activeSession.startTime).getTime() + activeSession.targetDuration * 60 * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                    : settings.fastingType === 'strict' && strictState
-                    ? strictState.windowEnd.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                    : '--:--'}
-                </span>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="detail-card">
-                <span className="detail-label">Tiempo de Comida</span>
-                <span className="detail-value" style={{ color: hasExceededIdeal ? 'var(--warning)' : 'var(--success)' }}>
-                  {formatTime(elapsedEatingMs)}
-                </span>
-              </div>
-              <div className="detail-card">
-                <span className="detail-label">Ventana Ideal</span>
-                <span className="detail-value">
-                  {idealEatingHours}h ({settings.fastingType === 'flexible' ? `${settings.flexibleDuration}:${idealEatingHours}` : `${settings.strictDuration}:${idealEatingHours}`})
-                </span>
-              </div>
-            </>
-          )}
+          {/* Time Grid Info */}
+          <div className="fast-details-grid">
+            {isFasting ? (
+              <>
+                <div className="detail-card">
+                  <span className="detail-label">Inicio Ayuno</span>
+                  <span className="detail-value">
+                    {settings.fastingType === 'flexible' && activeSession
+                      ? new Date(activeSession.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      : settings.fastingType === 'strict' && strictState
+                      ? strictState.windowStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      : '--:--'}
+                  </span>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Finalización</span>
+                  <span className="detail-value">
+                    {settings.fastingType === 'flexible' && activeSession
+                      ? new Date(new Date(activeSession.startTime).getTime() + activeSession.targetDuration * 60 * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      : settings.fastingType === 'strict' && strictState
+                      ? strictState.windowEnd.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      : '--:--'}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="detail-card">
+                  <span className="detail-label">Tiempo de Comida</span>
+                  <span className="detail-value" style={{ color: hasExceededIdeal ? 'var(--warning)' : 'var(--success)' }}>
+                    {formatTime(elapsedEatingMs)}
+                  </span>
+                </div>
+                <div className="detail-card">
+                  <span className="detail-label">Ventana Ideal</span>
+                  <span className="detail-value">
+                    {idealEatingHours}h ({settings.fastingType === 'flexible' ? `${settings.flexibleDuration}:${idealEatingHours}` : `${settings.strictDuration}:${idealEatingHours}`})
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
         </div>
-      </div>
 
       {/* Unlogged Strict Fasts Banners */}
       {unloggedFasts.length > 0 && (
