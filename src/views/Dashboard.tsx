@@ -234,6 +234,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       completed: false,
     };
     storage.saveActiveSession(session);
+    storage.saveLastEatingStart(null); // Clear eating start when fast begins
     setActiveSession(session);
   };
 
@@ -254,8 +255,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
     
     storage.addHistorySession(session);
     storage.saveActiveSession(null);
+    storage.saveLastEatingStart(end.toISOString()); // Record when eating started
     setActiveSession(null);
     onFastLogged();
+  };
+
+  // Actions: Reset flexible eating window start to now
+  const handleResetEatingStart = () => {
+    storage.saveLastEatingStart(new Date().toISOString());
+    setNow(new Date());
   };
 
   // Actions: Log strict fast manually
@@ -280,8 +288,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
   let statusLabel = 'Ayuno';
   let percentageText = '0%';
   let isFasting = false;
+  let hasExceededIdeal = false;
+  let idealEatingHours = 8;
+  let elapsedEatingMs = 0;
+  let eatingStartTime: Date | null = null;
 
   if (settings.fastingType === 'flexible') {
+    idealEatingHours = Math.max(1, 24 - settings.flexibleDuration);
+    const idealEatingMs = idealEatingHours * 60 * 60 * 1000;
+
     if (activeSession) {
       isFasting = true;
       const elapsedMs = now.getTime() - new Date(activeSession.startTime).getTime();
@@ -302,19 +317,67 @@ export const Dashboard: React.FC<DashboardProps> = ({
       }
     } else {
       isFasting = false;
-      progress = 0;
-      timeLeftText = formatTime(settings.flexibleDuration * 60 * 60 * 1000);
-      statusLabel = 'Comer / Libre';
-      percentageText = 'Inactivo';
+      
+      // Calculate Eating start
+      const storedEatingStart = storage.loadLastEatingStart();
+      if (storedEatingStart) {
+        eatingStartTime = new Date(storedEatingStart);
+      } else {
+        const history = storage.loadHistory();
+        if (history.length > 0 && history[0].endTime) {
+          eatingStartTime = new Date(history[0].endTime);
+        } else {
+          eatingStartTime = now; // Fallback
+        }
+      }
+
+      elapsedEatingMs = Math.max(0, now.getTime() - eatingStartTime.getTime());
+      hasExceededIdeal = elapsedEatingMs > idealEatingMs;
+      progress = elapsedEatingMs / idealEatingMs;
+
+      if (!hasExceededIdeal) {
+        const remainingMs = idealEatingMs - elapsedEatingMs;
+        timeLeftText = formatTime(remainingMs);
+        statusLabel = 'Ventana de Comida';
+        percentageText = `${Math.min(100, Math.floor(progress * 100))}% de comida`;
+      } else {
+        const exceededMs = elapsedEatingMs - idealEatingMs;
+        timeLeftText = `+${formatTime(exceededMs)}`;
+        statusLabel = 'Comida Excedida';
+        percentageText = '¡Tiempo Ideal Superado!';
+      }
     }
   } else {
     // Strict Mode
+    idealEatingHours = Math.max(1, 24 - settings.strictDuration);
+    const idealEatingMs = idealEatingHours * 60 * 60 * 1000;
+
     if (strictState) {
       isFasting = strictState.isFasting;
-      progress = strictState.progress;
-      timeLeftText = formatTime(strictState.timeLeftMs);
-      statusLabel = isFasting ? 'Ayuno Activo (Prog.)' : 'Ventana de Comida';
-      percentageText = `${Math.min(100, Math.floor(progress * 100))}%`;
+      
+      if (isFasting) {
+        progress = strictState.progress;
+        timeLeftText = formatTime(strictState.timeLeftMs);
+        statusLabel = 'Ayuno Activo (Prog.)';
+        percentageText = `${Math.min(100, Math.floor(progress * 100))}%`;
+      } else {
+        // Strict Eating Mode
+        eatingStartTime = strictState.windowStart;
+        elapsedEatingMs = Math.max(0, now.getTime() - strictState.windowStart.getTime());
+        hasExceededIdeal = elapsedEatingMs > idealEatingMs || now.getTime() >= strictState.windowEnd.getTime();
+        progress = elapsedEatingMs / idealEatingMs;
+
+        if (!hasExceededIdeal) {
+          timeLeftText = formatTime(strictState.timeLeftMs);
+          statusLabel = 'Ventana de Comida';
+          percentageText = `${Math.min(100, Math.floor(progress * 100))}% de comida`;
+        } else {
+          const exceededMs = elapsedEatingMs - idealEatingMs;
+          timeLeftText = `+${formatTime(exceededMs)}`;
+          statusLabel = 'Comida Excedida';
+          percentageText = '¡Tiempo Ideal Superado!';
+        }
+      }
     }
   }
 
@@ -331,6 +394,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           statusLabel={statusLabel}
           percentageText={percentageText}
           isFasting={isFasting}
+          hasExceededIdeal={hasExceededIdeal}
         />
 
         {/* Start / Stop Buttons */}
@@ -344,9 +408,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 Detener Ayuno
               </button>
             ) : (
-              <button className="btn btn-primary" onClick={handleStartFlexible}>
-                Iniciar Ayuno Flexible
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <button className="btn btn-primary" onClick={handleStartFlexible}>
+                  Iniciar Ayuno Flexible
+                </button>
+                {eatingStartTime && (
+                  <button 
+                    className="btn btn-secondary" 
+                    style={{ fontSize: '12px', padding: '8px 12px' }}
+                    onClick={handleResetEatingStart}
+                  >
+                    🔄 Reiniciar Reloj de Comida
+                  </button>
+                )}
+              </div>
             )
           ) : (
             // Strict mode doesn't start/stop, it runs on schedule
@@ -361,26 +436,45 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
         {/* Time Grid Info */}
         <div className="fast-details-grid">
-          <div className="detail-card">
-            <span className="detail-label">Inicio</span>
-            <span className="detail-value">
-              {settings.fastingType === 'flexible' && activeSession
-                ? new Date(activeSession.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                : settings.fastingType === 'strict' && strictState
-                ? strictState.windowStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                : '--:--'}
-            </span>
-          </div>
-          <div className="detail-card">
-            <span className="detail-label">Finalización</span>
-            <span className="detail-value">
-              {settings.fastingType === 'flexible' && activeSession
-                ? new Date(new Date(activeSession.startTime).getTime() + activeSession.targetDuration * 60 * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                : settings.fastingType === 'strict' && strictState
-                ? strictState.windowEnd.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                : '--:--'}
-            </span>
-          </div>
+          {isFasting ? (
+            <>
+              <div className="detail-card">
+                <span className="detail-label">Inicio Ayuno</span>
+                <span className="detail-value">
+                  {settings.fastingType === 'flexible' && activeSession
+                    ? new Date(activeSession.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    : settings.fastingType === 'strict' && strictState
+                    ? strictState.windowStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    : '--:--'}
+                </span>
+              </div>
+              <div className="detail-card">
+                <span className="detail-label">Finalización</span>
+                <span className="detail-value">
+                  {settings.fastingType === 'flexible' && activeSession
+                    ? new Date(new Date(activeSession.startTime).getTime() + activeSession.targetDuration * 60 * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    : settings.fastingType === 'strict' && strictState
+                    ? strictState.windowEnd.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    : '--:--'}
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="detail-card">
+                <span className="detail-label">Tiempo de Comida</span>
+                <span className="detail-value" style={{ color: hasExceededIdeal ? 'var(--warning)' : 'var(--success)' }}>
+                  {formatTime(elapsedEatingMs)}
+                </span>
+              </div>
+              <div className="detail-card">
+                <span className="detail-label">Ventana Ideal</span>
+                <span className="detail-value">
+                  {idealEatingHours}h ({settings.fastingType === 'flexible' ? `${settings.flexibleDuration}:${idealEatingHours}` : `${settings.strictDuration}:${idealEatingHours}`})
+                </span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -447,8 +541,32 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       )}
 
-      {/* Normal Eating / Idle Tip Card */}
-      {!isFasting && (
+      {/* Exceeded Ideal Eating Window Alert Card */}
+      {!isFasting && hasExceededIdeal && (
+        <div className="card" style={{ borderLeft: '4px solid var(--warning)', backgroundColor: 'rgba(245, 158, 11, 0.05)', animation: 'fadeIn 0.5s ease-out' }}>
+          <div className="stage-header">
+            <span className="stage-dot" style={{ backgroundColor: 'var(--warning)' }}></span>
+            <span className="stage-title" style={{ color: 'var(--warning)' }}>
+              ⚠️ Tiempo Estimado Ideal Superado
+            </span>
+          </div>
+          <p className="stage-desc">
+            Llevas <strong>{(elapsedEatingMs / (1000 * 60 * 60)).toFixed(1)} hs</strong> en tu ventana de comida. Tu tiempo ideal estimado según el modo seleccionado es de <strong>{idealEatingHours} hs</strong>. Pasar demasiado tiempo alimentándote puede dificultar el cumplimiento de tus metas.
+          </p>
+          {settings.fastingType === 'flexible' && (
+            <button 
+              className="btn btn-primary" 
+              style={{ marginTop: '14px', padding: '10px 16px', fontSize: '13px' }}
+              onClick={handleStartFlexible}
+            >
+              Iniciar Ayuno Ahora
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Normal Eating Window Card */}
+      {!isFasting && !hasExceededIdeal && (
         <div className="card" style={{ borderLeft: '4px solid var(--success)' }}>
           <div className="stage-header">
             <span className="stage-dot" style={{ backgroundColor: 'var(--success)' }}></span>
@@ -457,7 +575,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </span>
           </div>
           <p className="stage-desc">
-            Es momento de nutrir tu cuerpo de forma saludable. Concéntrate en proteínas magras, grasas saludables y carbohidratos complejos. ¡Mantente hidratado!
+            Es momento de nutrir tu cuerpo de forma saludable. Llevas {(elapsedEatingMs / (1000 * 60 * 60)).toFixed(1)}h de {idealEatingHours}h ideales. Concéntrate en proteínas magras, grasas saludables y carbohidratos complejos.
           </p>
         </div>
       )}

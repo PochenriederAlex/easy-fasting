@@ -3,6 +3,7 @@ import { AppSettings, FastSession, FastingStats } from '../types/types';
 const SETTINGS_KEY = 'easy_fasting_settings';
 const ACTIVE_SESSION_KEY = 'easy_fasting_active_session';
 const HISTORY_KEY = 'easy_fasting_history';
+const LAST_EATING_START_KEY = 'easy_fasting_last_eating_start';
 
 const DEFAULT_SETTINGS: AppSettings = {
   fastingType: 'flexible',
@@ -78,10 +79,24 @@ export const storage = {
     this.saveHistory(filtered);
   },
 
+  // Eating start timestamp (for flexible eating window tracking)
+  loadLastEatingStart(): string | null {
+    return localStorage.getItem(LAST_EATING_START_KEY);
+  },
+
+  saveLastEatingStart(isoString: string | null): void {
+    if (isoString === null) {
+      localStorage.removeItem(LAST_EATING_START_KEY);
+    } else {
+      localStorage.setItem(LAST_EATING_START_KEY, isoString);
+    }
+  },
+
   clearAllData(): void {
     localStorage.removeItem(SETTINGS_KEY);
     localStorage.removeItem(ACTIVE_SESSION_KEY);
     localStorage.removeItem(HISTORY_KEY);
+    localStorage.removeItem(LAST_EATING_START_KEY);
   },
 
   // Statistics

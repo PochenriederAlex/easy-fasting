@@ -21,13 +21,33 @@ function App() {
   }, []);
 
   // Recalculate fasting status for the header badge
-  const getFastingStatus = (): 'fasting' | 'eating' | 'idle' => {
+  const getFastingStatus = (): 'fasting' | 'eating' | 'eating_exceeded' => {
     if (settings.fastingType === 'flexible') {
-      return activeSession ? 'fasting' : 'idle';
+      if (activeSession) return 'fasting';
+      
+      const idealEatingHours = Math.max(1, 24 - settings.flexibleDuration);
+      const stored = storage.loadLastEatingStart();
+      let eatingStart: Date;
+      if (stored) {
+        eatingStart = new Date(stored);
+      } else {
+        const history = storage.loadHistory();
+        if (history.length > 0 && history[0].endTime) {
+          eatingStart = new Date(history[0].endTime);
+        } else {
+          eatingStart = now;
+        }
+      }
+      const elapsedMs = now.getTime() - eatingStart.getTime();
+      if (elapsedMs > idealEatingHours * 60 * 60 * 1000) {
+        return 'eating_exceeded';
+      }
+      return 'eating';
     } else {
       // Strict Mode Calculation
       const [hours, minutes] = settings.strictStartTime.split(':').map(Number);
       const durationMs = settings.strictDuration * 60 * 60 * 1000;
+      const idealEatingHours = Math.max(1, 24 - settings.strictDuration);
       
       const testDates = [
         new Date(now.getTime() - 24 * 60 * 60 * 1000), // Yesterday
@@ -42,6 +62,17 @@ function App() {
           return 'fasting';
         }
       }
+      
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
+      let lastFastEnd = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000 + durationMs);
+      if (now.getTime() >= todayStart.getTime() + durationMs) {
+        lastFastEnd = new Date(todayStart.getTime() + durationMs);
+      }
+      const elapsedEatingMs = now.getTime() - lastFastEnd.getTime();
+      if (elapsedEatingMs > idealEatingHours * 60 * 60 * 1000) {
+        return 'eating_exceeded';
+      }
+
       return 'eating';
     }
   };
@@ -60,7 +91,11 @@ function App() {
         <div className={`status-badge ${status}`}>
           <span className="status-dot"></span>
           <span>
-            {status === 'fasting' ? 'Ayuno' : status === 'eating' ? 'Comida' : 'Libre'}
+            {status === 'fasting'
+              ? 'Ayuno'
+              : status === 'eating_exceeded'
+              ? 'Comida Excedida'
+              : 'Comida'}
           </span>
         </div>
       </header>

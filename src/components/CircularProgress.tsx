@@ -6,6 +6,7 @@ interface CircularProgressProps {
   statusLabel: string; // e.g. "Ayuno Activo"
   percentageText: string; // e.g. "82%"
   isFasting: boolean;
+  hasExceededIdeal?: boolean;
 }
 
 export const CircularProgress: React.FC<CircularProgressProps> = ({
@@ -14,6 +15,7 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
   statusLabel,
   percentageText,
   isFasting,
+  hasExceededIdeal = false,
 }) => {
   const size = 240;
   const strokeWidth = 14;
@@ -25,10 +27,14 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
   const strokeDashoffset = circumference - clampedProgress * circumference;
 
   // Determine gradient based on state
-  const gradientId = isFasting ? 'fastingGradient' : 'eatingGradient';
+  const gradientId = isFasting
+    ? 'fastingGradient'
+    : hasExceededIdeal
+    ? 'exceededGradient'
+    : 'eatingGradient';
 
   return (
-    <div className="circular-progress-wrapper">
+    <div className={`circular-progress-wrapper ${hasExceededIdeal ? 'exceeded-glow' : ''}`}>
       <svg
         width={size}
         height={size}
@@ -46,6 +52,12 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
           <linearGradient id="eatingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#10b981" />
             <stop offset="100%" stopColor="#059669" />
+          </linearGradient>
+
+          {/* Exceeded Gradient (Orange to Red) */}
+          <linearGradient id="exceededGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#f97316" />
+            <stop offset="100%" stopColor="#ef4444" />
           </linearGradient>
 
           {/* Shadow filters for glow effect */}
@@ -88,9 +100,15 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
 
       {/* Central Content */}
       <div className="timer-text-content">
-        <span className="timer-subtitle">{statusLabel}</span>
-        <span className="timer-countdown">{timeLeft}</span>
-        <span className="timer-percentage">{percentageText}</span>
+        <span className={`timer-subtitle ${hasExceededIdeal ? 'subtitle-exceeded' : ''}`}>
+          {statusLabel}
+        </span>
+        <span className={`timer-countdown ${hasExceededIdeal ? 'countdown-exceeded' : ''}`}>
+          {timeLeft}
+        </span>
+        <span className={`timer-percentage ${hasExceededIdeal ? 'percentage-exceeded' : ''}`}>
+          {percentageText}
+        </span>
       </div>
     </div>
   );
