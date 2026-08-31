@@ -5,6 +5,12 @@ export interface AppSettings {
   flexibleDuration: number; // in hours
   strictStartTime: string; // "HH:MM" format
   strictDuration: number; // in hours
+  // Notification settings (disabled by default)
+  enableNotifications: boolean;
+  notifyFastStart: boolean;
+  notifyFastEnd: boolean;
+  notifyNearEnd: boolean;
+  nearEndMinutes: number; // minutes before target end time (e.g. 15, 30)
 }
 
 export interface FastSession {

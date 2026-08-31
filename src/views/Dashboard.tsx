@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppSettings, FastSession } from '../types/types';
 import { storage } from '../services/storage';
+import { notificationService } from '../services/notificationService';
 import { CircularProgress } from '../components/CircularProgress';
 
 interface DashboardProps {
@@ -51,6 +52,32 @@ export const Dashboard: React.FC<DashboardProps> = ({
       setUnloggedFasts([]);
     }
   }, [now, settings]);
+
+  // Check for active fasting notifications (start, near end warning, end)
+  useEffect(() => {
+    if (!settings.enableNotifications) return;
+
+    if (settings.fastingType === 'flexible' && activeSession) {
+      const elapsedMs = now.getTime() - new Date(activeSession.startTime).getTime();
+      const targetMs = activeSession.targetDuration * 60 * 60 * 1000;
+      notificationService.checkNotifications(settings, {
+        sessionId: activeSession.id,
+        isFasting: true,
+        elapsedMs,
+        targetMs,
+      });
+    } else if (settings.fastingType === 'strict' && strictState && strictState.isFasting) {
+      const elapsedMs = now.getTime() - strictState.windowStart.getTime();
+      const targetMs = settings.strictDuration * 60 * 60 * 1000;
+      const sessionId = `strict_${strictState.windowStart.getTime()}`;
+      notificationService.checkNotifications(settings, {
+        sessionId,
+        isFasting: true,
+        elapsedMs,
+        targetMs,
+      });
+    }
+  }, [now, settings, activeSession, strictState]);
 
   // Check for unlogged strict fasts
   const checkUnloggedStrictFasts = (settings: AppSettings) => {

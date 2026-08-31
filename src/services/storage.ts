@@ -10,6 +10,11 @@ const DEFAULT_SETTINGS: AppSettings = {
   flexibleDuration: 16,
   strictStartTime: '20:00',
   strictDuration: 16,
+  enableNotifications: false,
+  notifyFastStart: false,
+  notifyFastEnd: false,
+  notifyNearEnd: false,
+  nearEndMinutes: 15,
 };
 
 export const storage = {

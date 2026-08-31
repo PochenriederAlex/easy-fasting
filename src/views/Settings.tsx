@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AppSettings } from '../types/types';
 import { storage } from '../services/storage';
+import { notificationService } from '../services/notificationService';
 
 interface SettingsProps {
   settings: AppSettings;
@@ -206,6 +207,109 @@ export const Settings: React.FC<SettingsProps> = ({ settings, onSettingsChange }
           </div>
         </>
       )}
+
+      {/* Notifications Settings */}
+      <h3 className="setting-section-title">Notificaciones</h3>
+      <div className="setting-group">
+        {/* Enable Notifications Master Toggle */}
+        <div className="setting-row">
+          <div className="setting-label-block">
+            <span className="setting-label">Activar Notificaciones</span>
+            <span className="setting-desc">Recibe alertas del sistema en tu dispositivo (desactivadas por defecto).</span>
+          </div>
+          <label className="switch-toggle">
+            <input
+              type="checkbox"
+              checked={settings.enableNotifications}
+              onChange={async (e) => {
+                const checked = e.target.checked;
+                if (checked) {
+                  const granted = await notificationService.requestPermission();
+                  if (granted) {
+                    updateSetting('enableNotifications', true);
+                    updateSetting('notifyFastStart', true);
+                    updateSetting('notifyFastEnd', true);
+                    updateSetting('notifyNearEnd', true);
+                  } else {
+                    alert('No se otorgaron permisos de notificación en el navegador.');
+                    updateSetting('enableNotifications', false);
+                  }
+                } else {
+                  updateSetting('enableNotifications', false);
+                }
+              }}
+            />
+            <span className="slider round"></span>
+          </label>
+        </div>
+
+        {settings.enableNotifications && (
+          <>
+            {/* Notify Fast Start */}
+            <div className="setting-row">
+              <div className="setting-label-block">
+                <span className="setting-label">Inicio de Ayuno</span>
+                <span className="setting-desc">Avisar cuando comience un periodo de ayuno.</span>
+              </div>
+              <input
+                type="checkbox"
+                className="checkbox-input"
+                checked={settings.notifyFastStart}
+                onChange={(e) => updateSetting('notifyFastStart', e.target.checked)}
+              />
+            </div>
+
+            {/* Notify Near End (Pre-Fin) */}
+            <div className="setting-row">
+              <div className="setting-label-block">
+                <span className="setting-label">Aviso Previo al Fin</span>
+                <span className="setting-desc">Alerta previa para evitar cortar el ayuno antes de tiempo.</span>
+              </div>
+              <input
+                type="checkbox"
+                className="checkbox-input"
+                checked={settings.notifyNearEnd}
+                onChange={(e) => updateSetting('notifyNearEnd', e.target.checked)}
+              />
+            </div>
+
+            {/* Near End Minutes */}
+            {settings.notifyNearEnd && (
+              <div className="setting-row" style={{ paddingLeft: '32px', backgroundColor: 'rgba(255,255,255,0.01)' }}>
+                <div className="setting-label-block">
+                  <span className="setting-label">Anticipación</span>
+                  <span className="setting-desc">¿Con cuánta anticipación enviar el aviso?</span>
+                </div>
+                <select
+                  className="input-select"
+                  value={settings.nearEndMinutes}
+                  onChange={(e) => updateSetting('nearEndMinutes', Number(e.target.value))}
+                >
+                  <option value={10}>10 min antes</option>
+                  <option value={15}>15 min antes</option>
+                  <option value={30}>30 min antes</option>
+                  <option value={45}>45 min antes</option>
+                  <option value={60}>60 min antes</option>
+                </select>
+              </div>
+            )}
+
+            {/* Notify Fast End */}
+            <div className="setting-row">
+              <div className="setting-label-block">
+                <span className="setting-label">Fin de Ayuno</span>
+                <span className="setting-desc">Avisar cuando cumplas tu objetivo de ayuno.</span>
+              </div>
+              <input
+                type="checkbox"
+                className="checkbox-input"
+                checked={settings.notifyFastEnd}
+                onChange={(e) => updateSetting('notifyFastEnd', e.target.checked)}
+              />
+            </div>
+          </>
+        )}
+      </div>
 
       {/* Danger Zone */}
       <h3 className="setting-section-title" style={{ color: '#f87171' }}>Zona de Peligro</h3>
