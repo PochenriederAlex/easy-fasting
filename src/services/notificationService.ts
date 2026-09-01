@@ -1,3 +1,5 @@
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { AppSettings } from '../types/types';
 
 // Track fired notification tags to avoid duplicate alerts
@@ -5,15 +7,37 @@ const firedTags = new Set<string>();
 
 export const notificationService = {
   isSupported(): boolean {
+    if (Capacitor.isNativePlatform()) return true;
     return typeof window !== 'undefined' && 'Notification' in window;
   },
 
-  getPermissionState(): 'granted' | 'denied' | 'default' | 'unsupported' {
+  async getPermissionState(): Promise<'granted' | 'denied' | 'default' | 'unsupported'> {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const state = await LocalNotifications.checkPermissions();
+        if (state.display === 'granted') return 'granted';
+        if (state.display === 'denied') return 'denied';
+        return 'default';
+      } catch {
+        return 'unsupported';
+      }
+    }
+
     if (!this.isSupported()) return 'unsupported';
     return Notification.permission;
   },
 
   async requestPermission(): Promise<boolean> {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const permResult = await LocalNotifications.requestPermissions();
+        return permResult.display === 'granted';
+      } catch (e) {
+        console.warn('Native notification permission error:', e);
+        return false;
+      }
+    }
+
     if (!this.isSupported()) return false;
     try {
       const permission = await Notification.requestPermission();
@@ -23,14 +47,42 @@ export const notificationService = {
     }
   },
 
-  sendNotification(title: string, body: string, tag?: string): void {
-    if (!this.isSupported()) return;
-    if (Notification.permission !== 'granted') return;
-
+  async sendNotification(title: string, body: string, tag?: string): Promise<void> {
     if (tag) {
       if (firedTags.has(tag)) return; // Already sent for this tag
       firedTags.add(tag);
     }
+
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const permResult = await LocalNotifications.checkPermissions();
+        if (permResult.display !== 'granted') {
+          const reqResult = await LocalNotifications.requestPermissions();
+          if (reqResult.display !== 'granted') return;
+        }
+
+        const id = Math.floor(Math.random() * 1000000);
+        await LocalNotifications.schedule({
+          notifications: [
+            {
+              id,
+              title,
+              body,
+              schedule: { at: new Date(Date.now() + 100) },
+              smallIcon: 'ic_launcher',
+              sound: undefined,
+            },
+          ],
+        });
+      } catch (e) {
+        console.warn('Failed to schedule native notification:', e);
+      }
+      return;
+    }
+
+    // Web Notification API Fallback
+    if (!this.isSupported()) return;
+    if (Notification.permission !== 'granted') return;
 
     try {
       new Notification(title, {
@@ -39,7 +91,7 @@ export const notificationService = {
         tag,
       });
     } catch (e) {
-      console.warn('Failed to send notification:', e);
+      console.warn('Failed to send web notification:', e);
     }
   },
 

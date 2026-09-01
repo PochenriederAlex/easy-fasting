@@ -226,12 +226,17 @@ export const Settings: React.FC<SettingsProps> = ({ settings, onSettingsChange }
                 if (checked) {
                   const granted = await notificationService.requestPermission();
                   if (granted) {
-                    updateSetting('enableNotifications', true);
-                    updateSetting('notifyFastStart', true);
-                    updateSetting('notifyFastEnd', true);
-                    updateSetting('notifyNearEnd', true);
+                    const updated = {
+                      ...settings,
+                      enableNotifications: true,
+                      notifyFastStart: true,
+                      notifyFastEnd: true,
+                      notifyNearEnd: true,
+                    };
+                    storage.saveSettings(updated);
+                    onSettingsChange(updated);
                   } else {
-                    alert('No se otorgaron permisos de notificación en el navegador.');
+                    alert('No se otorgaron permisos de notificación en el dispositivo.');
                     updateSetting('enableNotifications', false);
                   }
                 } else {

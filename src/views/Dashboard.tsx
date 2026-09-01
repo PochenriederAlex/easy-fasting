@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AppSettings, FastSession } from '../types/types';
 import { storage } from '../services/storage';
 import { notificationService } from '../services/notificationService';
+import { widgetSync } from '../services/widgetSync';
 import { CircularProgress } from '../components/CircularProgress';
 
 interface DashboardProps {
@@ -77,6 +78,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
         targetMs,
       });
     }
+  }, [now, settings, activeSession, strictState]);
+
+  // Sync native Widget preferences
+  useEffect(() => {
+    const isCurrentlyFasting = settings.fastingType === 'flexible'
+      ? activeSession !== null
+      : (strictState ? strictState.isFasting : false);
+    widgetSync.syncWidgetData(settings, activeSession, isCurrentlyFasting);
   }, [now, settings, activeSession, strictState]);
 
   // Check for unlogged strict fasts
